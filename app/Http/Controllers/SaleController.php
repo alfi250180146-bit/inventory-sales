@@ -38,7 +38,6 @@ class SaleController extends Controller
             $itemsToProcess = [];
 
             foreach ($request->items as $item) {
-                // Fetch price directly from database
                 $product = Product::lockForUpdate()->find($item['product_id']);
 
                 if (!$product) {
@@ -49,13 +48,14 @@ class SaleController extends Controller
                     throw new \Exception("Stok produk {$product->name} tidak mencukupi! Stok saat ini: {$product->stock}");
                 }
 
-                $subtotal = $product->selling_price * $item['quantity'];
+                $price = $product->selling_price ?? $product->price ?? 0;
+                $subtotal = $price * $item['quantity'];
                 $total += $subtotal;
 
                 $itemsToProcess[] = [
                     'product' => $product,
                     'quantity' => $item['quantity'],
-                    'unit_price' => $product->selling_price,
+                    'unit_price' => $price,
                     'subtotal' => $subtotal,
                 ];
             }
@@ -106,7 +106,9 @@ class SaleController extends Controller
 
             foreach ($saleLocked->items as $item) {
                 $product = Product::lockForUpdate()->find($item->product_id);
-                $product->increment('stock', $item->quantity);
+                if ($product) {
+                    $product->increment('stock', $item->quantity);
+                }
             }
 
             $saleLocked->update(['status' => 'cancelled']);
@@ -116,6 +118,36 @@ class SaleController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('error', 'Gagal membatalkan transaksi: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Menghapus transaksi dan mengembalikan stok barang
+     */
+    public function destroy($id)
+    {
+        try {
+            DB::beginTransaction();
+
+            $sale = Sale::with('items')->findOrFail($id);
+
+            // Kembalikan stok produk
+            foreach ($sale->items as $item) {
+                $product = Product::lockForUpdate()->find($item->product_id);
+                if ($product) {
+                    $product->increment('stock', $item->quantity);
+                }
+            }
+
+            // Hapus detail transaksi dan nota utama
+            $sale->items()->delete();
+            $sale->delete();
+
+            DB::commit();
+            return redirect()->route('sales.index')->with('success', 'Transaksi berhasil dihapus dan stok barang telah dikembalikan.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Gagal menghapus transaksi: ' . $e->getMessage());
         }
     }
 }

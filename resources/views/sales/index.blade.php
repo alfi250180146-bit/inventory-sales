@@ -1,70 +1,62 @@
 @extends('layouts.app')
-@section('title', 'Riwayat Penjualan')
-@section('page_title', 'Riwayat Transaksi Penjualan (Sales)')
+@section('title', 'Penjualan')
+@section('page_title', 'Daftar Transaksi Penjualan')
 
 @section('content')
-<div class="card border-0 shadow-sm">
-    <div class="card-body">
+<div class="card border-0 shadow-sm bg-white rounded-3">
+    <div class="card-body p-4">
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="fw-bold m-0">Daftar Nota Penjualan</h5>
-            <a href="{{ route('sales.create') }}" class="btn btn-success fw-bold">
-                <i class="bi bi-cart-plus me-1"></i> Transaksi Kasir Baru
+            <h6 class="fw-bold text-dark m-0">Riwayat Transaksi Kasir</h6>
+            <a href="{{ route('sales.create') }}" class="btn btn-primary btn-sm fw-medium">
+                <i class="bi bi-plus-lg me-1"></i> Transaksi Baru
             </a>
         </div>
 
+        @if(session('success'))
+            <div class="alert alert-success alert-dismissible fade show small py-2" role="alert">
+                {{ session('success') }}
+                <button type="button" class="btn-close py-2" data-bs-dismiss="alert"></button>
+            </div>
+        @endif
+
         <div class="table-responsive">
-            <table class="table table-hover align-middle">
-                <thead class="table-light">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light small">
                     <tr>
-                        <th>No. Penjualan</th>
-                        <th>Kasir</th>
-                        <th>Total Belanja</th>
-                        <th>Status</th>
+                        <th>No. Faktur</th>
                         <th>Tanggal</th>
+                        <th>Kasir</th>
+                        <th class="text-end">Total</th>
                         <th class="text-center">Aksi</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody class="small">
                     @forelse($sales as $sale)
                     <tr>
-                        <td><code class="fw-bold text-primary">{{ $sale->sale_number }}</code></td>
-                        <td>{{ $sale->user->name }}</td>
-                        <td class="fw-bold">Rp {{ number_format($sale->total, 0, ',', '.') }}</td>
-                        <td>
-                            @if($sale->status === 'completed')
-                                <span class="badge bg-success">COMPLETED</span>
-                            @else
-                                <span class="badge bg-danger">CANCELLED</span>
-                            @endif
-                        </td>
-                        <td>{{ $sale->sold_at->format('d/m/Y H:i') }}</td>
+                        <td class="fw-semibold text-primary">{{ $sale->invoice_number ?? $sale->invoice ?? $sale->sale_number ?? 'INV-'.$sale->id }}</td>
+                        <td>{{ $sale->created_at ? $sale->created_at->format('d/m/Y H:i') : '-' }}</td>
+                        <td>{{ $sale->user->name ?? 'Kasir' }}</td>
+                        <td class="text-end fw-bold text-dark">Rp {{ number_format($sale->total ?? $sale->grand_total ?? 0, 0, ',', '.') }}</td>
                         <td class="text-center">
-                            <a href="{{ route('sales.show', $sale->id) }}" class="btn btn-info btn-sm text-white me-1">
-                                <i class="bi bi-eye"></i> Struk / Detail
+                            <a href="{{ route('sales.show', $sale->id) }}" class="btn btn-light btn-sm border me-1">
+                                <i class="bi bi-eye"></i> Detail & Struk
                             </a>
-
-                            <!-- Tombol Merah Batal Transaksi -->
-                            @if($sale->status === 'completed')
-                            <form action="{{ route('sales.cancel', $sale->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Apakah Anda yakin ingin membatalkan transaksi ini? Stok barang akan dikembalikan.');">
+                            <form action="{{ route('sales.destroy', $sale->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Hapus/Batalkan transaksi ini?')">
                                 @csrf
-                                <button type="submit" class="btn btn-danger btn-sm">
-                                    <i class="bi bi-x-circle"></i> Cancel
+                                @method('DELETE')
+                                <button type="submit" class="btn btn-outline-danger btn-sm">
+                                    <i class="bi bi-trash"></i> Hapus
                                 </button>
                             </form>
-                            @endif
                         </td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="6" class="text-center text-muted p-4">Belum ada riwayat transaksi penjualan.</td>
+                        <td colspan="5" class="text-center text-muted py-4">Belum ada transaksi penjualan recorded.</td>
                     </tr>
                     @endforelse
                 </tbody>
             </table>
-        </div>
-
-        <div class="mt-3">
-            {{ $sales->links() }}
         </div>
     </div>
 </div>

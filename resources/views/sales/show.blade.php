@@ -3,94 +3,79 @@
 @section('page_title', 'Struk Transaksi Penjualan')
 
 @section('content')
-<div class="d-flex justify-content-center mb-4">
-    <!-- Kartu Struk Penjualan -->
-    <div class="card border shadow-sm p-4" style="width: 380px; font-family: 'Courier New', Courier, monospace; background-color: #fff;">
-        <!-- Header Struk -->
-        <div class="text-center border-bottom pb-3 mb-3">
-            <h4 class="fw-bold m-0" style="font-family: sans-serif;">TOKO SEMBAKO JAYA</h4>
-            <small class="text-muted d-block">Jl. Raya Utama No. 123, Jakarta</small>
-            <small class="text-muted d-block">Telp: 0812-3456-7890</small>
-        </div>
+<style>
+    .receipt-box {
+        max-width: 380px;
+        margin: 0 auto;
+        background: #ffffff;
+        padding: 20px;
+        border-radius: 8px;
+        font-family: 'Courier New', Courier, monospace;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    @media print {
+        body * { visibility: hidden; }
+        .receipt-box, .receipt-box * { visibility: visible; }
+        .receipt-box { position: absolute; left: 0; top: 0; width: 100%; max-width: 80mm; box-shadow: none; }
+        .no-print { display: none !important; }
+    }
+</style>
 
-        <!-- Info Transaksi & Kasir Ala Indomaret -->
-        <div class="small mb-3 pb-2 border-bottom">
-            <div class="d-flex justify-content-between">
-                <span>No. Nota:</span>
-                <strong>{{ $sale->sale_number }}</strong>
-            </div>
-            <div class="d-flex justify-content-between">
-                <span>Tgl / Jam:</span>
-                <span>{{ $sale->sold_at->format('d/m/Y H:i:s') }}</span>
-            </div>
-            <div class="d-flex justify-content-between">
-                <span>Kasir / Staff:</span>
-                <strong>{{ $sale->user->name }}</strong>
-            </div>
-        </div>
-
-        <!-- Rincian Barang Belanjaan -->
-        <div class="table-responsive mb-3">
-            <table class="table table-borderless table-sm small mb-0">
-                <thead>
-                    <tr class="border-bottom">
-                        <th>Item</th>
-                        <th class="text-center">Qty</th>
-                        <th class="text-end">Harga</th>
-                        <th class="text-end">Total</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($sale->items as $item)
-                    <tr>
-                        <td colspan="4" class="fw-bold pb-0">{{ $item->product->name }}</td>
-                    </tr>
-                    <tr class="border-bottom">
-                        <td></td>
-                        <td class="text-center">{{ $item->quantity }}</td>
-                        <td class="text-end">{{ number_format($item->unit_price, 0, ',', '.') }}</td>
-                        <td class="text-end">{{ number_format($item->subtotal, 0, ',', '.') }}</td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Total Pembayaran -->
-        <div class="border-top pt-2 mb-3">
-            <div class="d-flex justify-content-between h5 fw-bold m-0">
-                <span>TOTAL:</span>
-                <span>Rp {{ number_format($sale->total, 0, ',', '.') }}</span>
-            </div>
-        </div>
-
-        <!-- Footer Struk Ala Indomaret -->
-        <div class="text-center pt-2 border-top small text-muted">
-            <p class="m-0">=== TERIMA KASIH ===</p>
-            <p class="m-0">Barang yang sudah dibeli</p>
-            <p class="m-0">tidak dapat ditukar/dikembalikan</p>
-            <small class="mt-2 d-block text-secondary">Layanan Konsumen: 1500-123</small>
-        </div>
-    </div>
-</div>
-
-<!-- Tombol Aksi (Kembali & Cetak) -->
-<div class="text-center no-print">
-    <a href="{{ route('sales.index') }}" class="btn btn-secondary me-2">
-        <i class="bi bi-arrow-left"></i> Kembali ke Riwayat
+<div class="mb-3 text-center no-print">
+    <a href="{{ route('sales.index') }}" class="btn btn-secondary btn-sm me-2">
+        <i class="bi bi-arrow-left"></i> Kembali
     </a>
-    <button onclick="window.print()" class="btn btn-primary fw-bold">
+    <button onclick="window.print()" class="btn btn-primary btn-sm fw-bold">
         <i class="bi bi-printer"></i> Cetak Struk
     </button>
 </div>
 
-<!-- CSS Khusus Saat Ditekan Tombol Cetak/Print -->
-<style>
-    @media print {
-        body * { visibility: hidden; }
-        .card, .card * { visibility: visible; }
-        .card { position: absolute; left: 0; top: 0; width: 100% !important; border: none !important; shadow: none !important; }
-        .no-print { display: none !important; }
-    }
-</style>
+<div class="receipt-box">
+    <div class="text-center mb-2">
+        <h5 class="fw-bold m-0">POS INVENTORY</h5>
+        <small class="d-block text-muted">Universitas Demo POS System</small>
+        <small class="text-muted">==============================</small>
+    </div>
+
+    <div class="small mb-2">
+        <div><strong>No:</strong> {{ $sale->invoice_number ?? $sale->invoice ?? $sale->sale_number ?? 'INV-'.$sale->id }}</div>
+        <div><strong>Tgl:</strong> {{ $sale->created_at ? $sale->created_at->format('d/m/Y H:i') : '-' }}</div>
+        <div><strong>Kasir:</strong> {{ $sale->user->name ?? 'Admin' }}</div>
+    </div>
+    
+    <div class="text-center text-muted small">==============================</div>
+
+    <table class="w-100 small my-2">
+        @php $items = $sale->items ?? $sale->details ?? []; @endphp
+        @forelse($items as $item)
+            @php
+                $price = $item->unit_price ?? $item->price ?? $item->selling_price ?? ($item->product->selling_price ?? 0);
+                $qty = $item->quantity ?? $item->qty ?? 1;
+                $subtotal = $item->subtotal ?? ($price * $qty);
+            @endphp
+            <tr>
+                <td colspan="3" class="fw-bold">{{ $item->product->name ?? 'Produk' }}</td>
+            </tr>
+            <tr>
+                <td>{{ $qty }} x {{ number_format($price, 0, ',', '.') }}</td>
+                <td class="text-end fw-bold">Rp {{ number_format($subtotal, 0, ',', '.') }}</td>
+            </tr>
+        @empty
+            <tr><td class="text-center">Item tidak ditemukan</td></tr>
+        @endforelse
+    </table>
+
+    <div class="text-center text-muted small">==============================</div>
+
+    <div class="d-flex justify-content-between fw-bold my-2">
+        <span>TOTAL:</span>
+        <span>Rp {{ number_format($sale->total ?? $sale->grand_total ?? 0, 0, ',', '.') }}</span>
+    </div>
+
+    <div class="text-center text-muted small">==============================</div>
+    <div class="text-center small mt-3">
+        <div>-- TERIMA KASIH --</div>
+        <small>Selamat Belanja Kembali</small>
+    </div>
+</div>
 @endsection
